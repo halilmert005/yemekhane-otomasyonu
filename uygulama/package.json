@@ -1,0 +1,15 @@
+{
+  "name": "yemekhane-uygulama",
+  "version": "1.0.0",
+  "description": "Yemekhane Otomasyonu Web API servisi",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "express": "^4.21.2",
+    "mysql2": "^3.11.5"
+  }
+}
