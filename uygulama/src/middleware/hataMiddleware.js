@@ -10,12 +10,10 @@ function hataYakalayici(err, req, res, _next) {
     return res.status(err.durumKodu).json({ hata: err.message });
   }
 
-  // Stored procedure'lerin SQLSTATE 45000 (errno 1644) Türkçe hata mesajı olduğu gibi iletilir
   if (err && (err.sqlState === '45000' || err.errno === 1644)) {
     return res.status(400).json({ hata: err.sqlMessage || err.message });
   }
 
-  // CHECK kısıtı (3819) gibi dahili veritabanı hataları ham haliyle kullanıcıya gösterilmez
   if (err && err.errno === 3819) {
     console.error('Veritabani kisit hatasi:', err.message);
     return res.status(400).json({ hata: 'Geçersiz işlem verisi.' });

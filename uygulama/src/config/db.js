@@ -11,15 +11,14 @@ const ortakAyarlar = {
   waitForConnections: true,
   connectionLimit: 10,
   decimalNumbers: true,
+  dateStrings: true,
 };
 
-// Yazma işlemleri ve stored procedure çağrıları kaynak sunucuya gider
 const yazmaHavuzu = mysql.createPool({
   ...ortakAyarlar,
   host: env.db.yazmaHost,
 });
 
-// Listeleme ve okuma sorguları replikaya gider
 const okumaHavuzu = mysql.createPool({
   ...ortakAyarlar,
   host: env.db.okumaHost,
