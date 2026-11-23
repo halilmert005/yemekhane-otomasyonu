@@ -1,10 +1,17 @@
 const menuRepo = require('../repositories/menuRepository');
 const rezervasyonRepo = require('../repositories/rezervasyonRepository');
+const menuOnbellek = require('../services/menuOnbellekService');
 const { bugunTarih, tarihEkle, gecerliTarihMi } = require('../utils/tarih');
 const { UygulamaHatasi } = require('../middleware/hataMiddleware');
 
 function kullaniciFiyatiSec(menu, rol) {
   return rol === 'ogrenci' ? menu.ogrenci_fiyati : menu.personel_fiyati;
+}
+
+function suresiDolduMu(rezervasyonSon) {
+  if (!rezervasyonSon) return false;
+  const hedef = new Date(String(rezervasyonSon).replace(' ', 'T') + '+03:00').getTime();
+  return Date.now() >= hedef;
 }
 
 async function referanslar(req, res, next) {
@@ -29,19 +36,36 @@ async function gununMenusu(req, res, next) {
     const yemekhaneId = req.query.yemekhane_id ? Number(req.query.yemekhane_id) : null;
     const ogunId = req.query.ogun_id ? Number(req.query.ogun_id) : null;
 
-    const [menuler, rezervasyonlar] = await Promise.all([
-      menuRepo.menuleriGetir({
+    let menuler = null;
+    if (yemekhaneId && ogunId) {
+      const onbellekMenu = await menuOnbellek.menuGetir(yemekhaneId, tarih, ogunId);
+      if (onbellekMenu) {
+        menuler = [onbellekMenu];
+      }
+    }
+
+    if (!menuler) {
+      menuler = await menuRepo.menuleriGetir({
         baslangicTarih: tarih,
         bitisTarih: tarih,
         yemekhaneId,
         ogunId,
-      }),
-      rezervasyonRepo.tarihAraligiKullaniciRezervasyonlari(req.kullanici.id, tarih, tarih),
-    ]);
+      });
+      if (yemekhaneId && ogunId && menuler.length === 1) {
+        await menuOnbellek.menuKaydet(menuler[0]);
+      }
+    }
+
+    const rezervasyonlar = await rezervasyonRepo.tarihAraligiKullaniciRezervasyonlari(
+      req.kullanici.id,
+      tarih,
+      tarih
+    );
 
     const rezHaritasi = new Map(rezervasyonlar.map((r) => [r.menu_id, r]));
     const sonuclar = menuler.map((menu) => ({
       ...menu,
+      suresi_doldu: suresiDolduMu(menu.rezervasyon_son),
       kullanici_fiyati: kullaniciFiyatiSec(menu, req.kullanici.rol),
       kullanici_rezervasyon: rezHaritasi.get(menu.menu_id) || null,
     }));

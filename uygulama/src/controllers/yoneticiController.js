@@ -1,4 +1,5 @@
 const menuRepo = require('../repositories/menuRepository');
+const menuOnbellek = require('../services/menuOnbellekService');
 const { bugunTarih, tarihEkle, gecerliTarihMi } = require('../utils/tarih');
 const { UygulamaHatasi } = require('../middleware/hataMiddleware');
 
@@ -71,6 +72,7 @@ async function menuOlustur(req, res, next) {
   try {
     const veri = menuVerisiDogrula(req.body, false);
     const menuId = await menuRepo.menuOlustur(veri);
+    await menuOnbellek.menuSil(veri.yemekhaneId, veri.tarih, veri.ogunId);
     return res.status(201).json({ menu_id: menuId, mesaj: 'Menü oluşturuldu.' });
   } catch (err) {
     return next(err);
@@ -85,6 +87,7 @@ async function menuGuncelle(req, res, next) {
     }
     const veri = menuVerisiDogrula(req.body, true);
     const guncellenen = await menuRepo.menuGuncelle(menuId, veri);
+    await menuOnbellek.menuSil(guncellenen.yemekhane_id, guncellenen.tarih, guncellenen.ogun_id);
     return res.json({ menu: guncellenen, mesaj: 'Menü güncellendi.' });
   } catch (err) {
     return next(err);

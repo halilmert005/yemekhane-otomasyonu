@@ -1,34 +1,32 @@
 const crypto = require('crypto');
+const { redis } = require('../config/redis');
 
-const OTURUM_SURESI_MS = 30 * 60 * 1000;
-const oturumlar = new Map();
+const OTURUM_SURESI_SN = 30 * 60;
+const ON_EK = 'oturum:';
 
-function olustur(kullanici) {
+async function olustur(kullanici) {
   const token = crypto.randomBytes(24).toString('hex');
-  oturumlar.set(token, {
+  const veri = JSON.stringify({
     id: kullanici.id,
     eposta: kullanici.eposta,
     rol: kullanici.rol,
-    bitis: Date.now() + OTURUM_SURESI_MS,
   });
+  await redis.set(ON_EK + token, veri, 'EX', OTURUM_SURESI_SN);
   return token;
 }
 
-function dogrula(token) {
+async function dogrula(token) {
   if (!token) return null;
-  const kayit = oturumlar.get(token);
-  if (!kayit) return null;
-  if (Date.now() > kayit.bitis) {
-    oturumlar.delete(token);
-    return null;
-  }
-  kayit.bitis = Date.now() + OTURUM_SURESI_MS;
-  return kayit;
+  const anahtar = ON_EK + token;
+  const ham = await redis.get(anahtar);
+  if (!ham) return null;
+  await redis.expire(anahtar, OTURUM_SURESI_SN);
+  return JSON.parse(ham);
 }
 
-function sil(token) {
+async function sil(token) {
   if (token) {
-    oturumlar.delete(token);
+    await redis.del(ON_EK + token);
   }
 }
 
