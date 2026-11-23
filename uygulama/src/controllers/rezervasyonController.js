@@ -18,11 +18,13 @@ async function olustur(req, res, next) {
       throw new UygulamaHatasi(400, 'Geçerli bir menü seçilmelidir.');
     }
 
-    const sonuc = await rezervasyonRepo.rezervasyonYap(req.kullanici.id, menuId);
+    const porsiyon = typeof req.body.porsiyon === 'string' ? req.body.porsiyon : 'tam';
+    const sonuc = await rezervasyonRepo.rezervasyonYap(req.kullanici.id, menuId, porsiyon);
     const guncelKullanici = await kullaniciRepo.idIleGetir(req.kullanici.id, true);
 
     return res.status(201).json({
       rezervasyon_id: sonuc.rezervasyon_id,
+      porsiyon: sonuc.porsiyon,
       ucret: sonuc.ucret,
       bakiye: guncelKullanici ? guncelKullanici.bakiye : sonuc.bakiye,
     });

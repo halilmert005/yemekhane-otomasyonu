@@ -66,11 +66,55 @@ async function cikis(req, res, next) {
 async function ben(req, res, next) {
   try {
     const kaynaktan = req.query.kaynak === '1';
-    const kullanici = await kullaniciRepo.idIleGetir(req.kullanici.id, kaynaktan);
+    const [kullanici, alerjenler] = await Promise.all([
+      kullaniciRepo.idIleGetir(req.kullanici.id, kaynaktan),
+      kullaniciRepo.kullaniciAlerjenleriniGetir(req.kullanici.id, kaynaktan),
+    ]);
     if (!kullanici) {
       throw new UygulamaHatasi(404, 'Kullanıcı bulunamadı.');
     }
-    return res.json({ kullanici });
+    return res.json({
+      kullanici,
+      alerjen_idler: alerjenler.map((a) => a.alerjen_id),
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+async function alerjenlerListele(req, res, next) {
+  try {
+    const alerjenler = await kullaniciRepo.tumAlerjenler();
+    return res.json({ alerjenler });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+async function profilAlerjenleriGetir(req, res, next) {
+  try {
+    const kaynaktan = req.query.kaynak === '1';
+    const alerjenler = await kullaniciRepo.kullaniciAlerjenleriniGetir(req.kullanici.id, kaynaktan);
+    return res.json({
+      alerjenler,
+      alerjen_idler: alerjenler.map((a) => a.alerjen_id),
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+async function profilAlerjenleriKaydet(req, res, next) {
+  try {
+    const hamListe = Array.isArray(req.body.alerjen_idler) ? req.body.alerjen_idler : [];
+    const alerjenIdleri = [
+      ...new Set(hamListe.map(Number).filter((id) => Number.isInteger(id) && id > 0)),
+    ];
+    await kullaniciRepo.kullaniciAlerjenleriniGuncelle(req.kullanici.id, alerjenIdleri);
+    return res.json({
+      alerjen_idler: alerjenIdleri,
+      mesaj: 'Alerjen tercihleriniz kaydedildi.',
+    });
   } catch (err) {
     return next(err);
   }
@@ -80,4 +124,7 @@ module.exports = {
   giris,
   cikis,
   ben,
+  alerjenlerListele,
+  profilAlerjenleriGetir,
+  profilAlerjenleriKaydet,
 };

@@ -1,9 +1,10 @@
 const { okumaHavuzu, yazmaHavuzu } = require('../config/db');
 
-async function rezervasyonYap(kullaniciId, menuId) {
-  const [sonucKumeleri] = await yazmaHavuzu.query('CALL sp_rezervasyon_yap(?, ?)', [
+async function rezervasyonYap(kullaniciId, menuId, porsiyon = 'tam') {
+  const [sonucKumeleri] = await yazmaHavuzu.query('CALL sp_rezervasyon_yap(?, ?, ?)', [
     kullaniciId,
     menuId,
+    porsiyon,
   ]);
   return sonucKumeleri[0][0];
 }
@@ -18,7 +19,7 @@ async function rezervasyonIptal(kullaniciId, rezervasyonId) {
 
 async function kullaniciRezervasyonlari(kullaniciId) {
   const [satirlar] = await okumaHavuzu.execute(
-    `SELECT r.id AS rezervasyon_id, r.menu_id, r.durum, r.ucret,
+    `SELECT r.id AS rezervasyon_id, r.menu_id, r.porsiyon, r.durum, r.ucret,
             r.olusturma, r.kullanma_zamani, r.iptal_zamani,
             m.tarih, m.yemekhane_id, yh.ad AS yemekhane,
             m.ogun_id, o.ad AS ogun, o.sira AS ogun_sira,
@@ -42,7 +43,7 @@ async function kullaniciRezervasyonlari(kullaniciId) {
 
 async function tarihAraligiKullaniciRezervasyonlari(kullaniciId, baslangicTarih, bitisTarih) {
   const [satirlar] = await okumaHavuzu.execute(
-    `SELECT r.id AS rezervasyon_id, r.menu_id, r.durum, r.ucret
+    `SELECT r.id AS rezervasyon_id, r.menu_id, r.porsiyon, r.durum, r.ucret
        FROM rezervasyonlar r
        JOIN menuler m ON m.id = r.menu_id
       WHERE r.kullanici_id = ?

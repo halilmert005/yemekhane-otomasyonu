@@ -1,5 +1,6 @@
 const menuRepo = require('../repositories/menuRepository');
 const rezervasyonRepo = require('../repositories/rezervasyonRepository');
+const kullaniciRepo = require('../repositories/kullaniciRepository');
 const menuOnbellek = require('../services/menuOnbellekService');
 const { bugunTarih, tarihEkle, gecerliTarihMi } = require('../utils/tarih');
 const { UygulamaHatasi } = require('../middleware/hataMiddleware');
@@ -12,6 +13,36 @@ function suresiDolduMu(rezervasyonSon) {
   if (!rezervasyonSon) return false;
   const hedef = new Date(String(rezervasyonSon).replace(' ', 'T') + '+03:00').getTime();
   return Date.now() >= hedef;
+}
+
+function menuleriZenginlestir(menuler, rezervasyonlar, rol, kullaniciAlerjenleri) {
+  const rezHaritasi = new Map(rezervasyonlar.map((r) => [r.menu_id, r]));
+  const alerjenHaritasi = new Map(kullaniciAlerjenleri.map((a) => [a.alerjen_id, a.ad]));
+
+  return menuler.map((menu) => {
+    const tamFiyat = kullaniciFiyatiSec(menu, rol);
+    const yarimDestekli = Number(menu.ogun_id) !== 1;
+    const yemekler = (menu.yemekler || []).map((y) => {
+      const uyariAlerjenler = (y.alerjen_idler || [])
+        .filter((id) => alerjenHaritasi.has(id))
+        .map((id) => alerjenHaritasi.get(id));
+      return {
+        ...y,
+        uyari_alerjenler: uyariAlerjenler,
+        uyari_var: uyariAlerjenler.length > 0,
+      };
+    });
+
+    return {
+      ...menu,
+      yemekler,
+      suresi_doldu: suresiDolduMu(menu.rezervasyon_son),
+      kullanici_fiyati: tamFiyat,
+      yarim_porsiyon_destekli: yarimDestekli,
+      yarim_porsiyon_fiyati: yarimDestekli ? Number((Number(tamFiyat) * 0.6).toFixed(2)) : null,
+      kullanici_rezervasyon: rezHaritasi.get(menu.menu_id) || null,
+    };
+  });
 }
 
 async function referanslar(req, res, next) {
@@ -56,20 +87,12 @@ async function gununMenusu(req, res, next) {
       }
     }
 
-    const rezervasyonlar = await rezervasyonRepo.tarihAraligiKullaniciRezervasyonlari(
-      req.kullanici.id,
-      tarih,
-      tarih
-    );
+    const [rezervasyonlar, kullaniciAlerjenleri] = await Promise.all([
+      rezervasyonRepo.tarihAraligiKullaniciRezervasyonlari(req.kullanici.id, tarih, tarih),
+      kullaniciRepo.kullaniciAlerjenleriniGetir(req.kullanici.id),
+    ]);
 
-    const rezHaritasi = new Map(rezervasyonlar.map((r) => [r.menu_id, r]));
-    const sonuclar = menuler.map((menu) => ({
-      ...menu,
-      suresi_doldu: suresiDolduMu(menu.rezervasyon_son),
-      kullanici_fiyati: kullaniciFiyatiSec(menu, req.kullanici.rol),
-      kullanici_rezervasyon: rezHaritasi.get(menu.menu_id) || null,
-    }));
-
+    const sonuclar = menuleriZenginlestir(menuler, rezervasyonlar, req.kullanici.rol, kullaniciAlerjenleri);
     return res.json({ tarih, menuler: sonuclar });
   } catch (err) {
     return next(err);
@@ -88,22 +111,17 @@ async function haftalikMenuler(req, res, next) {
     }
     const yemekhaneId = req.query.yemekhane_id ? Number(req.query.yemekhane_id) : null;
 
-    const [menuler, rezervasyonlar] = await Promise.all([
+    const [menuler, rezervasyonlar, kullaniciAlerjenleri] = await Promise.all([
       menuRepo.menuleriGetir({
         baslangicTarih: baslangic,
         bitisTarih: bitis,
         yemekhaneId,
       }),
       rezervasyonRepo.tarihAraligiKullaniciRezervasyonlari(req.kullanici.id, baslangic, bitis),
+      kullaniciRepo.kullaniciAlerjenleriniGetir(req.kullanici.id),
     ]);
 
-    const rezHaritasi = new Map(rezervasyonlar.map((r) => [r.menu_id, r]));
-    const sonuclar = menuler.map((menu) => ({
-      ...menu,
-      kullanici_fiyati: kullaniciFiyatiSec(menu, req.kullanici.rol),
-      kullanici_rezervasyon: rezHaritasi.get(menu.menu_id) || null,
-    }));
-
+    const sonuclar = menuleriZenginlestir(menuler, rezervasyonlar, req.kullanici.rol, kullaniciAlerjenleri);
     return res.json({ baslangic, bitis, menuler: sonuclar });
   } catch (err) {
     return next(err);

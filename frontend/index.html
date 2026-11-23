@@ -59,6 +59,7 @@
         <button type="button" class="sekme-dugme" data-ekran="rezervasyonlar">Rezervasyonlarım</button>
         <button type="button" class="sekme-dugme" data-ekran="bakiye">Bakiye</button>
         <button type="button" class="sekme-dugme" data-ekran="degerlendirme">Değerlendirme</button>
+        <button type="button" class="sekme-dugme" data-ekran="profil">Profil & Alerjenler</button>
         <button type="button" id="sekme-yonetici" class="sekme-dugme gizli" data-ekran="yonetici">Yönetici Paneli</button>
       </div>
     </nav>
@@ -111,6 +112,7 @@
               <tr>
                 <th>Tarih</th>
                 <th>Yemekhane / Öğün</th>
+                <th>Porsiyon</th>
                 <th>Ücret</th>
                 <th>Durum</th>
                 <th>İşlem</th>
@@ -172,6 +174,19 @@
             </thead>
             <tbody id="degerlendirme-govde"></tbody>
           </table>
+        </div>
+      </section>
+
+      <section id="ekran-profil" class="ekran gizli">
+        <h2>Profil ve Alerjen Tercihleri</h2>
+        <div class="kart" id="profil-ozet"></div>
+        <div class="kart">
+          <h3>Alerjen Uyarılarım</h3>
+          <p class="uyari-metin">Seçtiğiniz alerjenleri içeren yemekler menülerde uyarıyla işaretlenir.</p>
+          <form id="profil-alerjen-formu" novalidate>
+            <div id="profil-alerjen-listesi" class="alerjen-izgara"></div>
+            <button type="submit" class="dugme">Alerjen Tercihlerini Kaydet</button>
+          </form>
         </div>
       </section>
 
